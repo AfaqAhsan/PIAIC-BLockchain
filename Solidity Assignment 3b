@@ -1,0 +1,120 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+interface IERC20 {
+   
+    function totalSupply() external view returns (uint256);
+    function balanceOf(address account) external view returns (uint256);
+    function transfer(address recipient, uint256 amount) external returns (bool);
+    function allowance(address owner, address spender) external view returns (uint256);
+    function approve(address spender, uint256 amount) external returns (bool);
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+}
+
+contract ERC20 is IERC20{
+
+    address public owner; 
+    string public name;
+    string public symbol;
+    uint256 public decimals;
+    uint256 private _totalSupply;
+    uint256 price = 100; 
+    uint256 cap;
+    uint public time = 30 days;
+    uint public blockTime;
+    mapping (address => uint256) private _balances;
+    mapping (address => mapping (address => uint256)) private _allowances;
+    
+    constructor () {
+        name = "AFAQ-TOKEN";
+        symbol = "AQT";
+        decimals = 18;  
+        owner = msg.sender;
+        cap = 200000 * 10 ** decimals;
+        _totalSupply = 100000 * 10**decimals;
+        blockTime = block.timestamp;
+        
+        _balances[owner] = _totalSupply;
+        emit Transfer(address(this),owner,_totalSupply);
+     }
+    function transfer(address recipient, uint256 amount) public virtual override returns (bool) {
+        address sender = msg.sender;
+        require(sender != address(0), " YOU ARE TRANSFERING FROM THE ZERO ADDRESS");
+        require(recipient != address(0), "YOU ARE TRANSFERING TO THE ZERO ADDRESS");
+        require(_balances[sender] > amount,"INSUFFICIENT BALANCE");
+        require(block.timestamp >= blockTime+time,"for Transfer you must need to wait for 30 days");
+        _balances[sender] = _balances[sender] - amount;
+        _balances[recipient] = _balances[recipient] + amount;
+        emit Transfer(sender, recipient, amount);
+        return true;
+    }
+    function approve(address spender, uint256 amount) public virtual override returns (bool) {
+        address tokenOwner = msg.sender;
+        require(tokenOwner != address(0), "APPROVE FROM THE ZERO ADDRESS");
+        require(spender != address(0), "APPROVE TO THE ZERO ADDRESS");
+        _allowances[tokenOwner][spender] = amount;
+        emit Approval(tokenOwner, spender, amount);
+        return true;
+    }
+    function transferFrom(address tokenOwner, address recipient, uint256 amount) public virtual override returns (bool) {
+        address spender = msg.sender;
+        uint256 _allowance = _allowances[tokenOwner][spender]; 
+        require(_allowance > amount, "TRANSFER AMMOUNT IS EXCEDED");
+        _allowance = _allowance - amount;
+        _balances[tokenOwner] =_balances[tokenOwner] - amount; 
+        _balances[recipient] = _balances[recipient] + amount;
+        emit Transfer(tokenOwner, recipient, amount);
+        _allowances[tokenOwner][spender] = _allowance;
+        emit Approval(tokenOwner, spender, amount);
+        return true;
+    }
+    
+    function buyToken()public payable returns(bool){
+        address tokenBuyer = msg.sender;
+        require(msg.sender != owner,"owner can not buy token");
+        require(msg.value >= 1 ether,"to buy token you must need to deposit atleast 1 ether");
+        uint256 deposit = msg.value;
+        deposit = deposit/1e18;
+        uint  tokenPrice = deposit*100;
+        _balances[owner]-=tokenPrice;
+        _balances[tokenBuyer]+=tokenPrice;
+        return true;}
+        
+        
+        function adjustPrice(uint newPrice)public returns(bool){
+        require(msg.sender == owner,"price will only adjust by owner");
+        price = newPrice;
+        return true;
+    }    
+        
+        
+    
+    function mintToken(uint256 Tokens) public returns(bool){
+        uint256 noOfTokens = Tokens*1e18;
+        require(msg.sender == owner,"only owner can mint the tokens");
+        require(_totalSupply+noOfTokens <= cap ,"no of tokens you want too mint is exceeded from cap limit");
+        _balances[owner]+=noOfTokens;
+        return true;
+    }
+    
+    
+    
+    function totalSupply() public view override returns (uint256) {
+        return _totalSupply;
+    }
+    function balanceOf(address account) public view override returns (uint256) {
+        return _balances[account];
+    }
+     function allowance(address tokenOwner, address spender) public view virtual override returns (uint256) {
+        return _allowances[tokenOwner][spender]; 
+    }
+}
+
+
+
+
+
+
+
